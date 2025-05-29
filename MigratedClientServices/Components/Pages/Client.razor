@@ -1,0 +1,343 @@
+@page "/"
+@using BootstrapBlazor.Components
+@using Console = System.Console
+@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
+@using MigratedClientServices.Data
+@inject IClient ClientService
+@rendermode InteractiveServer
+@inherits LayoutComponentBase
+@inject ToastService ToastService
+@inject ProtectedSessionStorage ProtectedSessionStore
+@implements IDisposable
+
+<link rel="stylesheet" href="Styles/ClientStyle.css">
+
+<div class="container">
+    <header class="header">
+        <h1>Stock Trading Dashboard</h1>
+    </header>
+
+    <div class="card">
+
+        @if (!_isAuthenticated)
+        {
+            <div class="auth-container">
+                <p>Enter your access code to continue:</p>
+                <div class="input-group">
+                    <input class="input-field" @bind="_clientUsername"/>
+                    <input type="password" class="input-field" @bind="_clientPassword"/>
+                </div>
+                <button class="login-btn" @onclick="Login">
+                    <span class="material-icons">Log in</span>
+                </button>
+            </div>
+        }
+        else
+        {
+            <div class="content">
+                <h3>Logged in as <span class="highlight">@_clientName</span></h3>
+                <h5>Balance @_balance.ToString("C")</h5>
+                <div class="stocks-container">
+                    <!-- Stock Selection -->
+                    <div class="stock-selection">
+                        <h4 class="section-title">Select stocks to stream prices</h4>
+                        <div class="stock-grid">
+                            @if (stocks.ContainsKey(_clientId))
+                            {
+                                @foreach (var stock in stocks[_clientId])
+                                {
+                                    <div class="stock-item">
+                                        <input type="checkbox" class="stock-checkbox" checked="@_checkedValue[stock.InstrumentId]" @onchange="(args) => UpdateSelectedStocks(args, stock)"/>
+                                        <label class="stock-label">@stock.InstrumentId</label>
+                                    </div>
+                                }
+                            }
+                        </div>
+                    </div>
+
+                    <!-- Selected Stocks -->
+                    <div class="selected-stocks">
+                        <h4 class="section-title">Selected Stocks</h4>
+                        <h5 class="section-title">Ask Price</h5>
+
+                        @if (_selectedStocksPerClient.ContainsKey(_clientId) && _selectedStocksPerClient[_clientId].Any())
+                        {
+                            <div class="stock-list">
+                                <ul>
+                                    @foreach (var stock in _selectedStocksPerClient[_clientId])
+                                    {
+                                        <li class="selected-stock-item">
+                                            <span class="stock-name">@stock.InstrumentId</span>
+                                            <span class="stock-price">@(stock.Price == 0 ? "Price is yet to come" : stock.Price.ToString("C"))</span>
+                                            @if (stock.Price != 0)
+                                            {
+                                                <input type="number" class="quantity-input" min="1" @bind="stock.Size"/>
+
+                                                <button class="buy-btn" @onclick="() => BuyStock(stock)">
+                                                    Buy
+                                                </button>
+                                            }
+                                            else
+                                            {
+
+                                            }
+                                        </li>
+                                    }
+                                </ul>
+                            </div>
+                        }
+                        else
+                        {
+                            <p class="no-stocks">No stocks selected.</p>
+                        }
+                    </div>
+                </div>
+                <div class="holdings-container">
+                    <div class="holdings-section">
+                        <h4 class="section-title">Your Holdings</h4>
+
+                        @if (_holdings.Any())
+                        {
+                            <div class="holdings-list">
+                                @foreach (var holding in _holdings.Where(x => x.Size > 0).OrderBy(o => o.InstrumentId).ToList())
+                                {
+                                    <div class="holding-item" key="@holding.InstrumentId">
+                                        <span class="stock-name">@holding.InstrumentId</span>
+                                        <span class="stock-amount">Amount: @holding.Size</span>
+                                        <span class="stock-amount">Bid price: @holding.BidPrice.ToString("C")</span>
+                                        <input type="number" class="quantity-input" min="1" @bind="holding.SellSize" />
+
+                                        <button class="sell-btn" @onclick="() => SellStock(holding, holding.SellSize)">
+                                            Sell
+                                        </button>
+                                    </div>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <p class="no-holdings">No holdings available.</p>
+                        }
+                    </div>
+                </div>
+            </div>
+            <button class="btn btn-danger logout-btn shadow-sm" @onclick="LogOut">
+                <i class="bi bi-box-arrow-right"></i> Log Out
+            </button>
+        }
+    </div>
+</div>
+
+@code {
+    private Dictionary<Guid, HashSet<Stock>> stocks = new();
+    private bool _isAuthenticated;
+    private Guid _clientId;
+    private string _clientName = "";
+    private string _clientUsername = "";
+    private string _clientPassword = "";
+    private Dictionary<Guid, List<Stock>> _selectedStocksPerClient = new();
+    private List<HoldingData> _holdings = new();
+    private Dictionary<string, bool> _checkedValue = new();
+    private decimal _balance = 0.0m;
+
+    private void Login()
+    {
+        ClientService.Login(_clientUsername, _clientPassword, LoginSuccess, UpdateClientData);
+    }
+
+    private async void LoginSuccess(LoginInfo info)
+    {
+        if (info.IsAuthenticated) //TODO figure out what todo if this is called, before ClientData has arrived. 
+        {
+            _clientId = info.ClientId;
+            stocks[_clientId] = ClientService.GetStockOptions<HashSet<Stock>>(stockOptions =>
+            {
+                stocks[_clientId] = stockOptions;
+            });
+
+            //Initial values for the render
+            _selectedStocksPerClient[_clientId] = new List<Stock>();
+            foreach (var stock in stocks[_clientId])
+            {
+                _checkedValue[stock.InstrumentId] = false;
+            }
+            
+            _isAuthenticated = info.IsAuthenticated;
+            await InvokeAsync(StateHasChanged);
+        }else
+        {
+            await ToastService.Error("Error", "Login Failed - Incorrect username or password", autoHide: true);
+        }
+    }
+
+    private async void UpdateSelectedStocks(ChangeEventArgs args, Stock stock)
+    {
+        var localStock = (Stock)stock.Clone();
+        var enabled = (bool)(args.Value ?? false);
+        var info = new StreamInformation
+        {
+            ClientId = _clientId,
+            EnableLivePrices = enabled,
+            InstrumentId = localStock.InstrumentId
+        };
+        localStock.EnableLivePrices = enabled;
+
+        _checkedValue[stock.InstrumentId] = enabled;
+
+        if (!_selectedStocksPerClient.ContainsKey(_clientId))
+        {
+            _selectedStocksPerClient[_clientId] = new List<Stock>();
+        }
+
+        var selectedStocks = _selectedStocksPerClient[_clientId];
+        if (localStock.EnableLivePrices)
+        {
+            if (!selectedStocks.Any(s => s.InstrumentId == localStock.InstrumentId))
+            {
+                selectedStocks.Add(localStock);
+            }
+        }
+        else
+        {
+            selectedStocks.RemoveAll(s => s.InstrumentId == localStock.InstrumentId);
+        }
+
+        ClientService.StreamPrice(info, UpdateAskPrice);
+        await ProtectedSessionStore.SetAsync($"selectedstocks{_clientId}", _selectedStocksPerClient);
+        await ProtectedSessionStore.SetAsync($"checked{_clientId}", _checkedValue);
+    }
+
+    private async void UpdateAskPrice(Stock stock)
+    {
+        Console.WriteLine("Client is updating Ask price");
+        var localStock = (Stock)stock.Clone();
+        if (!_selectedStocksPerClient.TryGetValue(_clientId, out var selectedStocks))
+        {
+            return;
+        }
+
+        var matchingStock = selectedStocks.SingleOrDefault(s => s.InstrumentId == localStock.InstrumentId);
+
+        if (matchingStock == null) return;
+        matchingStock.Price = localStock.Price;
+        await InvokeAsync(StateHasChanged);
+    }
+    
+    private async void UpdateBidPrice(Stock stock)
+    {
+        Console.WriteLine("Client is updating Bid price");
+        var localStock = (Stock)stock.Clone();
+        foreach (var holding in _holdings.Where(holding => holding.InstrumentId == localStock.InstrumentId))
+        {
+            holding.BidPrice = localStock.Price;
+        }
+        
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async void BuyStock(Stock stock)
+    {
+        if (stock.Price == 0 || stock.Size < 1)
+        {
+            await ToastService.Error("Error", "Cannot buy stock without a valid price or a size less than 1", autoHide: true);
+            return;
+        }
+        const OrderSide side = OrderSide.RightSided;
+        var order = new Order
+        {
+            ClientId = _clientId,
+            Side = side,
+            Stock = stock
+        };
+        ClientService.HandleOrder(order, OrderHandled);
+    }
+
+    private async void SellStock(HoldingData holdingData, int size)
+    {
+        if (holdingData.BidPrice == 0 || size < 1)
+        {
+            await ToastService.Error("Error", "Cannot sell stock without a valid price or with size less than 1", autoHide: true);
+            return;
+        }
+
+        const OrderSide side = OrderSide.LeftSided;
+        var stock = new Stock
+        {
+            EnableLivePrices = holdingData.Size - size > 0,
+            InstrumentId = holdingData.InstrumentId,
+            Price = holdingData.BidPrice,
+            Size = size
+        };
+        var order = new Order
+        {
+            ClientId = _clientId,
+            Side = side,
+            Stock = stock
+        };
+        order.Stock.Size = size;
+        ClientService.HandleOrder(order, OrderHandled);
+    }
+
+    private async void OrderHandled(Order order)
+    {
+        switch (order.Status)
+        {
+            case OrderStatus.Success:
+                await ToastService.Success("Success", $"Order for {order.Stock.Size} of stock {order.Stock.InstrumentId} was successful", autoHide: true);
+                break;
+            case OrderStatus.Processing:
+                await ToastService.Information("Processing", "Order is processing", autoHide: true);
+                break;
+            case OrderStatus.Rejected:
+                await ToastService.Error("Rejected", $"Order for {order.Stock.Size} of stock {order.Stock.InstrumentId} was rejected with error message: " + order.ErrorMesssage, autoHide: true);
+                break;
+            case OrderStatus.Canceled:
+                await ToastService.Error("Cancelled", $"Order for {order.Stock.Size} of stock {order.Stock.InstrumentId} was cancelled with error message: " + order.ErrorMesssage, autoHide: true);
+                break;
+        }
+
+        var info = new StreamInformation
+        {
+            ClientId = _clientId,
+            EnableLivePrices = true,
+            InstrumentId = order.Stock.InstrumentId
+        };
+        
+        ClientService.StreamPrice(info, UpdateBidPrice, isAskPrice: false);
+    }
+
+    private async void UpdateClientData(ClientData data)
+    {   // Only update for the once thats actually affected
+        Console.WriteLine("Updating client data for: " + data.Name);
+        _clientName = data.Name;
+        _holdings = data.Holdings;
+        _balance = data.Balance;
+        foreach (var holding in _holdings)
+        {
+            var info = new StreamInformation
+            {
+                ClientId = data.ClientId,
+                EnableLivePrices = true,
+                InstrumentId = holding.InstrumentId
+            };
+            ClientService.StreamPrice(info, UpdateBidPrice, isAskPrice: false);
+        }
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void LogOut()
+    {
+        ClientService.Logout(LogOutSuccess);
+    }
+
+    private async void LogOutSuccess(bool authenticated)
+    {
+        _isAuthenticated = authenticated;
+        Dispose();
+    }
+    public void Dispose()
+    {
+        Console.WriteLine("Component is disposed");
+        ClientService.DestroyClientConsumers(_clientId, _clientUsername);
+    }
+}

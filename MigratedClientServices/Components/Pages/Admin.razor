@@ -1,0 +1,98 @@
+@page "/Admin"
+@using BootstrapBlazor.Components
+@using MigratedClientServices.Data
+@using NATS.Client.JetStream
+@using NATS.Net
+
+@inject ToastService ToastService
+@inject NatsClient natsClient
+
+<link rel="stylesheet" href="Styles/AdminStyle.css">
+
+<div class="container">
+    <h3>Admin Dashboard</h3>
+    
+    <!-- Set Simulation Speed -->
+    <div class="section">
+        <h4 class="section-title">Set Simulation Speed</h4>
+        <p>Each external broker has a 1/simulationSpeed chance of updating a price every half second.</p>
+        <input type="number" class="input-field" @bind="simSpeed" />
+        <button class="button" @onclick="setSimSpeed">
+            <span>Set Simulation Speed</span>
+        </button>
+    </div>
+
+    <!-- Simulate New Price -->
+    <div class="section">
+        <h4 class="section-title">Put new price on bus</h4>
+        <input type="text" class="input-field" placeholder="Instrument ID" @bind="_developmentInstrumentId" />
+        <input type="number" class="input-field" placeholder="Price" @bind="_developmentPrice" />
+        <button class="btn btn-warning shadow-sm" @onclick="SimulateNewPrice">
+            <i class="bi bi-graph-up"></i> Simulate Price
+        </button>
+    </div>
+
+    <!-- Update Target Position -->
+    <div class="section">
+        <h4 class="section-title">Put new target position on bus</h4>
+        <input type="text" class="input-field" placeholder="Instrument ID" @bind="_developmentInstrumentId" />
+        <input type="number" class="input-field" placeholder="Target Position" @bind="_developmentTarget" />
+        <button class="btn btn-warning shadow-sm" @onclick="UpdateTargetPosition">
+            <i class="bi bi-graph-up"></i> New Target Position
+        </button>
+    </div>
+</div>
+
+@code {
+    private int simSpeed { get; set; }
+    private string _developmentInstrumentId = "";
+    private decimal _developmentPrice;
+    private int _developmentTarget = 0;
+    private INatsJSContext clientStream;
+
+    protected override async Task OnInitializedAsync()
+    {
+        clientStream = natsClient.CreateJetStreamContext();
+    }
+    
+    private async void setSimSpeed()
+    {
+        if (simSpeed < 1)
+        {
+            await ToastService.Error("Error", "Simulation Speed must be an integer larger than 0", autoHide: true);
+        }
+        else
+        {
+           var topic = TopicGenerator.TopicForUpdateSimSpeed();
+           await natsClient.PublishAsync(topic, simSpeed);
+            await ToastService.Success("Success", $"Simulation Speed set to {simSpeed}", autoHide: true);
+        }
+    }
+
+    private async void SimulateNewPrice()
+    {
+        var stock = new Stock
+        {
+            InstrumentId = _developmentInstrumentId,
+            Price = _developmentPrice
+        };
+        var stockTopic = TopicGenerator.TopicForMarketInstrumentPrice(stock.InstrumentId);
+        await natsClient.PublishAsync(stockTopic, stock);
+
+        await ToastService.Success("Success", "New price added to bus", autoHide: true);
+    }
+
+    private async void UpdateTargetPosition()
+    {
+        var newTarget = new TargetPosition
+        {
+            InstrumentId = _developmentInstrumentId,
+            Target = _developmentTarget
+        };
+
+        var topic = TopicGenerator.TopicForTargetPositionUpdate(newTarget.InstrumentId);
+        await natsClient.PublishAsync(topic, newTarget);
+
+        await ToastService.Success("Success", "New target position added to bus", autoHide: true);
+    }
+}

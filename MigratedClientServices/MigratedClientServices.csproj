@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+    <PropertyGroup>
+        <TargetFramework>net9.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <Content Update="appsettings.json">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </Content>
+      <Content Include="..\.dockerignore">
+        <Link>.dockerignore</Link>
+      </Content>
+    </ItemGroup>
+    <ItemGroup>
+        <None Include="wwwroot\Styles\ClientStyle.css" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="BootstrapBlazor" Version="9.6.4" />
+      <PackageReference Include="NATS.Net" Version="2.6.1" />
+    </ItemGroup>
+
+</Project>
