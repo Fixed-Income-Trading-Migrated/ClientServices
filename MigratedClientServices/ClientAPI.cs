@@ -250,7 +250,6 @@ public class ClientAPI : IClient
             }
         }, cts.Token);
         _subscriptionTasks.Add(task);
-        
     }
 
     public async void Stop()
@@ -430,12 +429,12 @@ public class ClientAPI : IClient
                             try
                             {
                                 await foreach (var msg2 in consumer2.ConsumeAsync<ClientData>(
-                                                   cancellationToken: cts.Token))
+                                                   cancellationToken: ctss.Token))
                                 {
                                     if (msg2.Data == null)
                                     {
                                         _logger.LogError("DBConsumer consumer returned null");
-                                        await msg.AckAsync(cancellationToken: cts.Token);
+                                        await msg.AckAsync(cancellationToken: ctss.Token);
                                         return;
                                     }
                                     _logger.LogInformation("Got client data");
@@ -443,7 +442,7 @@ public class ClientAPI : IClient
                                     var cD = msg2.Data;
                                     _clientDatas.AddOrUpdate(cD.ClientId, cD, (key, oldValue) => cD);
                                     callbackClientData.DynamicInvoke(cD);
-                                    await msg2.AckAsync(cancellationToken: cts.Token);
+                                    await msg2.AckAsync(cancellationToken: ctss.Token);
                                 }
                             }
                             catch (OperationCanceledException e)
