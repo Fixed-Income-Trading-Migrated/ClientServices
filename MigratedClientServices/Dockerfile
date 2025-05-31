@@ -11,4 +11,4 @@ WORKDIR /app
 COPY --from=build /out .
 EXPOSE 8080
 EXPOSE 8081
-ENTRYPOINT ["dotnet", "MigratedClient.dll"]
+ENTRYPOINT ["dotnet", "MigratedClientServices.dll"]
