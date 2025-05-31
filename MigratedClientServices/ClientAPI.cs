@@ -287,7 +287,7 @@ public class ClientAPI : IClient
         else
         {
             var priceWithSpread = localOrder.Stock.Price;
-            _logger.LogInformation($"pws {priceWithSpread}");
+            _logger.LogInformation("pws {PriceWithSpread}", priceWithSpread);
             localOrder.Stock.Price = priceWithSpread * (1.0m / (1.0m - spreadProcent));
             localOrder.SpreadPrice = localOrder.Stock.Price - priceWithSpread;
         }
@@ -340,7 +340,7 @@ public class ClientAPI : IClient
         _subscriptionTasks.Add(task);
         
         _logger.LogInformation("ClientAPI order sent with: {ClientId}", order.ClientId);
-        await _natsClient.PublishAsync<Order>(topicToPublish, localOrder);
+        await _natsClient.PublishAsync(topicToPublish, localOrder);
     }
 
     public async void Login(string username, string password, Action<LoginInfo> callbackLogin, Action<ClientData> callbackClientData)
@@ -475,7 +475,7 @@ public class ClientAPI : IClient
     }
 }
 
-internal class SpreadCalculator
+internal static class SpreadCalculator
 {
     private static readonly Dictionary<Tier, decimal> SpreadPercentages = new()
     {
