@@ -40,7 +40,7 @@
                 <div class="stocks-container">
                     <!-- Stock Selection -->
                     <div class="stock-selection">
-                        <h4 class="section-title">Select stocks to stream prices</h4>
+                        <h4 class="section-title">Select instruments to stream prices</h4>
                         <div class="stock-grid">
                             @if (stocks.ContainsKey(_clientId))
                             {
@@ -57,7 +57,7 @@
 
                     <!-- Selected Stocks -->
                     <div class="selected-stocks">
-                        <h4 class="section-title">Selected Stocks</h4>
+                        <h4 class="section-title">Selected instruments</h4>
                         <h5 class="section-title">Ask Price</h5>
 
                         @if (_selectedStocksPerClient.ContainsKey(_clientId) && _selectedStocksPerClient[_clientId].Any())
@@ -68,6 +68,7 @@
                                     {
                                         <li class="selected-stock-item">
                                             <span class="stock-name">@stock.InstrumentId</span>
+                                            <span class="stock-date">@stock.DateMaturity.ToString("dd-MM-yyyy")</span>
                                             <span class="stock-price">@(stock.Price == 0 ? "Price is yet to come" : stock.Price.ToString("C"))</span>
                                             @if (stock.Price != 0)
                                             {
@@ -88,7 +89,7 @@
                         }
                         else
                         {
-                            <p class="no-stocks">No stocks selected.</p>
+                            <p class="no-stocks">No instruments selected.</p>
                         }
                     </div>
                 </div>
@@ -102,10 +103,11 @@
                                 @foreach (var holding in _holdings.Where(x => x.Size > 0).OrderBy(o => o.InstrumentId).ToList())
                                 {
                                     <div class="holding-item" key="@holding.InstrumentId">
+                                        <span>Maturity: @holding.DateMaturity.ToString("dd-MM-yyyy")</span>
                                         <span class="stock-name">@holding.InstrumentId</span>
                                         <span class="stock-amount">Amount: @holding.Size</span>
                                         <span class="stock-amount">Bid price: @holding.BidPrice.ToString("C")</span>
-                                        <input type="number" class="quantity-input" min="1" @bind="holding.SellSize" />
+                                        <input type="number" class="quantity-input" min="1" @bind="holding.SellSize"/>
 
                                         <button class="sell-btn" @onclick="() => SellStock(holding, holding.SellSize)">
                                             Sell
@@ -266,7 +268,8 @@
             EnableLivePrices = holdingData.Size - size > 0,
             InstrumentId = holdingData.InstrumentId,
             Price = holdingData.BidPrice,
-            Size = size
+            Size = size,
+            DateMaturity = holdingData.DateMaturity
         };
         var order = new Order
         {

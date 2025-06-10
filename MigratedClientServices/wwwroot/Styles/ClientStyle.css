@@ -94,7 +94,7 @@ h2 {
 
 .stock-selection, .selected-stocks {
     background: white;
-    padding: 20px;
+    padding: -10px;
     border-radius: 8px;
     box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
     width: 45%;
@@ -129,7 +129,7 @@ h2 {
 .selected-stock-item {
     display: flex;
     justify-content: space-between;
-    padding: 8px;
+    padding: 0px;
     border-bottom: 1px solid #ddd;
 }
 
@@ -167,8 +167,9 @@ h2 {
 
 /* Style for the price element */
 .stock-price {
-    color: green;
-    font-weight: bold;
+    color: #2e7d32;
+    font-weight: 600;
+    font-size: 1rem;
 }
 
 .quantity-input {
@@ -307,4 +308,13 @@ h2 {
     box-shadow: 0px 5px 15px rgba(0, 0, 0, 0.2);
 }
 
-
+.stock-date {
+    background-color: #e3f2fd;
+    color: #1565c0;
+    font-weight: 600;
+    font-size: 0.9rem;
+    padding: 4px 10px;
+    border-radius: 8px;
+    text-align: center;
+    min-width: 80px;
+}
