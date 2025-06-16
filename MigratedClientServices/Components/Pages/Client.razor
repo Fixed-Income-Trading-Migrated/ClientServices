@@ -14,7 +14,7 @@
 
 <div class="container">
     <header class="header">
-        <h1>Stock Trading Dashboard</h1>
+        <h1>Fixed Income Trading Dashboard</h1>
     </header>
 
     <div class="card">
@@ -211,7 +211,6 @@
 
     private async void UpdateAskPrice(Stock stock)
     {
-        Console.WriteLine("Client is updating Ask price");
         var localStock = (Stock)stock.Clone();
         if (!_selectedStocksPerClient.TryGetValue(_clientId, out var selectedStocks))
         {
@@ -222,6 +221,7 @@
 
         if (matchingStock == null) return;
         matchingStock.Price = localStock.Price;
+        matchingStock.DateMaturity = localStock.DateMaturity;
         await InvokeAsync(StateHasChanged);
     }
     
