@@ -232,6 +232,7 @@
         foreach (var holding in _holdings.Where(holding => holding.InstrumentId == localStock.InstrumentId))
         {
             holding.BidPrice = localStock.Price;
+            holding.DateMaturity = localStock.DateMaturity;
         }
         
         await InvokeAsync(StateHasChanged);
