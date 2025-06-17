@@ -58,29 +58,39 @@
                     <!-- Selected Stocks -->
                     <div class="selected-stocks">
                         <h4 class="section-title">Selected instruments</h4>
-                        <h5 class="section-title">Ask Price</h5>
 
                         @if (_selectedStocksPerClient.ContainsKey(_clientId) && _selectedStocksPerClient[_clientId].Any())
                         {
                             <div class="stock-list">
-                                <ul>
+                                <ul class="selected-stocks-list">
+                                    <li class="selected-stock-header">
+                                        <span class="">Name</span>
+                                        <span class="">Maturity</span>
+                                        <span class="">Price</span>
+                                        <span class="">Qty</span>
+                                        <span class="">Action</span>
+                                    </li>
+
                                     @foreach (var stock in _selectedStocksPerClient[_clientId])
                                     {
                                         <li class="selected-stock-item">
                                             <span class="stock-name">@stock.InstrumentId</span>
                                             <span class="stock-date">@stock.DateMaturity.ToString("dd-MM-yyyy")</span>
                                             <span class="stock-price">@(stock.Price == 0 ? "Price is yet to come" : stock.Price.ToString("C"))</span>
+
                                             @if (stock.Price != 0)
                                             {
-                                                <input type="number" class="quantity-input" min="1" @bind="stock.Size"/>
-
-                                                <button class="buy-btn" @onclick="() => BuyStock(stock)">
-                                                    Buy
-                                                </button>
+                                                <span class="stock-quantity">
+                                                    <input type="number" class="quantity-input input-field" min="1" @bind="stock.Size" />
+                                                </span>
+                                                <span class="stock-action">
+                                                    <button class="buy-btn button" @onclick="() => BuyStock(stock)">Buy</button>
+                                                </span>
                                             }
                                             else
                                             {
-
+                                                <span class="stock-quantity">—</span>
+                                                <span class="stock-action">—</span>
                                             }
                                         </li>
                                     }

@@ -2,7 +2,6 @@
 
 
 .container {
-    background: white;
     padding: 30px;
     border-radius: 12px;
     box-shadow: 0px 5px 15px rgba(0, 0, 0, 0.15);
@@ -317,4 +316,50 @@ h2 {
     border-radius: 8px;
     text-align: center;
     min-width: 80px;
+}
+
+.selected-stocks-list {
+    list-style: none;
+    padding: 0;
+    margin-top: 10px;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0px 4px 10px rgba(0,0,0,0.1);
+}
+
+.selected-stock-header {
+    display: flex;
+    justify-content: space-between;
+    font-weight: bold;
+    padding: 10px 15px;
+    border-bottom: 2px solid black;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+}
+
+.selected-stock-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 15px;
+}
+
+.selected-stock-item:last-child {
+    border-bottom: none;
+}
+
+.stock-name,
+.stock-date,
+.stock-price,
+.stock-quantity,
+.stock-action {
+    width: 20%;
+    text-align: center;
+}
+
+.stock-quantity input {
+    width: 60px;
+    padding: 4px;
+    font-size: 0.95rem;
+    text-align: center;
 }
